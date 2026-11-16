@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 abstract class TripDatabase : RoomDatabase() {
 
     abstract fun tripDao(): TripDao
+    abstract fun tripActivityDao(): TripActivityDao
 
     companion object {
         @Volatile
@@ -46,7 +47,7 @@ abstract class TripDatabase : RoomDatabase() {
                 super.onCreate(db)
                 INSTANCE?.let { database ->
                     scope.launch {
-                        populateInitialSampleData(database.tripDao())
+                        populateInitialSampleData(database.tripDao(), database.tripActivityDao())
                     }
                 }
             }
@@ -55,12 +56,12 @@ abstract class TripDatabase : RoomDatabase() {
                 super.onOpen(db)
                 INSTANCE?.let { database ->
                     scope.launch {
-                        populateInitialSampleData(database.tripDao())
+                        populateInitialSampleData(database.tripDao(), database.tripActivityDao())
                     }
                 }
             }
 
-            suspend fun populateInitialSampleData(dao: TripDao) {
+            suspend fun populateInitialSampleData(tripDao: TripDao, activityDao: TripActivityDao) {
                 val sampleTrips = listOf(
                     Trip(
                         id = "paris_2026",
@@ -323,8 +324,8 @@ abstract class TripDatabase : RoomDatabase() {
                     )
                 )
 
-                dao.insertTrips(sampleTrips)
-                dao.insertActivities(sampleActivities)
+                tripDao.insertTrips(sampleTrips)
+                activityDao.insertActivities(sampleActivities)
             }
         }
     }

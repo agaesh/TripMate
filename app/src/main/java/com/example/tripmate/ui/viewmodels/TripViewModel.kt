@@ -4,9 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.tripmate.data.model.Trip
-import com.example.tripmate.data.model.TripActivityEntity
 import com.example.tripmate.data.repository.TripRepository
-import com.example.tripmate.ui.screens.ActivityCategory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,14 +15,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class TripViewModel(private val repository: TripRepository) : ViewModel() {
 
     val rawTrips: StateFlow<List<Trip>> = repository.allTrips.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
+        initialValue = emptyList(),
     )
 
     private val _searchQuery = MutableStateFlow("")
@@ -42,7 +39,7 @@ class TripViewModel(private val repository: TripRepository) : ViewModel() {
     val filteredTrips: StateFlow<List<Trip>> = combine(
         rawTrips,
         _searchQuery,
-        _selectedFilter
+        _selectedFilter,
     ) { trips, query, filter ->
         trips.filter { trip ->
             val matchesQuery = query.isBlank() ||
@@ -64,29 +61,29 @@ class TripViewModel(private val repository: TripRepository) : ViewModel() {
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
+        initialValue = emptyList(),
     )
 
     val pagedTrips: StateFlow<List<Trip>> = combine(
         filteredTrips,
-        _pageLimit
+        _pageLimit,
     ) { trips, limit ->
         trips.take(limit)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
+        initialValue = emptyList(),
     )
 
     val hasMore: StateFlow<Boolean> = combine(
         filteredTrips,
-        _pageLimit
+        _pageLimit,
     ) { trips, limit ->
         trips.size > limit
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = true
+        initialValue = true,
     )
 
     fun setSearchQuery(query: String) {
@@ -118,16 +115,7 @@ class TripViewModel(private val repository: TripRepository) : ViewModel() {
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = null
-    )
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val selectedTripActivities: StateFlow<List<TripActivityEntity>> = _selectedTripId.flatMapLatest { tripId ->
-        repository.getActivitiesForTrip(tripId)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
+        initialValue = null,
     )
 
     fun setSelectedTripId(tripId: String) {
@@ -143,41 +131,6 @@ class TripViewModel(private val repository: TripRepository) : ViewModel() {
     fun deleteTrip(trip: Trip) {
         viewModelScope.launch {
             repository.deleteTrip(trip)
-        }
-    }
-
-    fun saveActivity(
-        activityId: String?,
-        tripId: String,
-        title: String,
-        category: ActivityCategory,
-        cost: Double,
-        dateMillis: Long,
-        hour: Int,
-        minute: Int,
-        location: String,
-        description: String
-    ) {
-        viewModelScope.launch {
-            val entity = TripActivityEntity(
-                id = activityId ?: UUID.randomUUID().toString(),
-                tripId = tripId.ifBlank { "paris_2026" },
-                title = title,
-                category = category.name,
-                cost = cost,
-                dateMillis = dateMillis,
-                hour = hour,
-                minute = minute,
-                location = location,
-                description = description
-            )
-            repository.saveActivity(entity)
-        }
-    }
-
-    fun deleteActivity(activity: TripActivityEntity) {
-        viewModelScope.launch {
-            repository.deleteActivity(activity)
         }
     }
 }
