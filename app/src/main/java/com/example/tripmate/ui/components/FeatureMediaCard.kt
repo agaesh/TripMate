@@ -147,6 +147,7 @@ fun FeatureMediaCard(
 @Composable
 fun FeatureMediaCard(
     trip: Trip,
+    budget: Double = 0.0,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -166,7 +167,28 @@ fun FeatureMediaCard(
             }
         },
         badgeContent = {
-            OverlayBadge(text = "${trip.days} Days")
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Top-right badge using your existing OverlayBadge
+                OverlayBadge(
+                    text = "${trip.days} Days",
+                    modifier = Modifier.align(Alignment.TopEnd)
+                )
+
+                // Bottom-right budget badge with a different M3 color
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                ) {
+                    Text(
+                        text = "RM ${"%.2f".format(budget)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
         },
         content = {
             Text(
