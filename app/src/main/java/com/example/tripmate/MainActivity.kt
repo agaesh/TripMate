@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -21,8 +22,11 @@ import com.example.tripmate.data.local.TripDatabase
 import com.example.tripmate.data.model.Trip
 import com.example.tripmate.data.repository.TripActivityRepository
 import com.example.tripmate.data.repository.TripRepository
+import com.example.tripmate.ui.components.ConfirmMessageBox
+import com.example.tripmate.ui.screens.ActivityDetailScreen
 import com.example.tripmate.ui.screens.AddActivityScreen
 import com.example.tripmate.ui.screens.AddEditTripScreen
+import com.example.tripmate.ui.screens.BudgetStatScreen
 import com.example.tripmate.ui.screens.HomeScreen
 import com.example.tripmate.ui.theme.TripMateTheme
 import com.example.tripmate.ui.viewmodels.TripActivityViewModel
@@ -43,6 +47,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val navController = rememberNavController()
+            // true right after an activity is saved; the dialog is shown on the Activity Detail screen
+            val showSavedDialog = remember { mutableStateOf(false) }
             val tripViewModel: TripViewModel = viewModel(factory = tripFactory)
             val activityViewModel: TripActivityViewModel = viewModel(factory = activityFactory)
 
@@ -135,6 +141,7 @@ class MainActivity : ComponentActivity() {
                             tripName = tripName,
                             tripInfo = tripInfo,
                             activityId = activityId,
+                            showSuccessDialog = false, // shown on the Activity Detail screen instead
                             onNavigateBack = {
                                 navController.popBackStack()
                             },
@@ -151,6 +158,64 @@ class MainActivity : ComponentActivity() {
                                     location = location,
                                     description = description,
                                 )
+                                // Redirect straight to the trip's Activity Detail screen.
+                                // popUpTo removes any older copy of it so the back stack doesn't pile up.
+                                showSavedDialog.value = true
+                                navController.navigate("activity_detail/${Uri.encode(tripId)}") {
+                                    popUpTo("activity_detail/{tripId}") { inclusive = true }
+                                }
+                            },
+                        )
+                    }
+
+                    composable(
+                        route = "activity_detail/{tripId}",
+                        arguments = listOf(
+                            navArgument("tripId") { type = NavType.StringType },
+                        ),
+                    ) { backStackEntry ->
+                        val tripId = backStackEntry.arguments?.getString("tripId") ?: "paris_2026"
+                        val selectedTrip by tripViewModel.selectedTrip.collectAsState()
+
+                        ActivityDetailScreen(
+                            tripId = tripId,
+                            tripViewModel = tripViewModel,
+                            activityViewModel = activityViewModel,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onAddActivity = {
+                                val encodedName = Uri.encode(selectedTrip?.title ?: "")
+                                val encodedInfo = Uri.encode(
+                                    selectedTrip?.let { "${it.days} Days • ${it.toPlace}" } ?: ""
+                                )
+                                navController.navigate("add_edit_activity?tripId=$tripId&tripName=$encodedName&tripInfo=$encodedInfo")
+                            },
+                            onViewBudget = {
+                                navController.navigate("budget_stat")
+                            },
+                        )
+
+                        if (showSavedDialog.value) {
+                            ConfirmMessageBox(
+                                title = "Successfully Saved!",
+                                message = "Your activity has been saved to the itinerary.",
+                                confirmButtonText = "OK",
+                                confirmButtonColor = Color(0xFF1976D2),
+                                onConfirm = { showSavedDialog.value = false },
+                                onDismissRequest = { showSavedDialog.value = false },
+                            )
+                        }
+                    }
+
+                    composable(route = "budget_stat") {
+                        val selectedTrip by tripViewModel.selectedTrip.collectAsState()
+
+                        BudgetStatScreen(
+                            tripName = selectedTrip?.title ?: "",
+                            tripInfo = selectedTrip?.let { "${it.days} Days • ${it.toPlace}" } ?: "",
+                            onNavigateBack = {
+                                navController.popBackStack()
                             },
                         )
                     }

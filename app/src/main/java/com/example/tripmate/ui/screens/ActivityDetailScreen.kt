@@ -44,6 +44,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +66,8 @@ import com.example.tripmate.ui.components.FeatureMediaCard
 import com.example.tripmate.ui.components.OverlayBadge
 import com.example.tripmate.ui.components.ScrollableFilterLayout
 import com.example.tripmate.ui.theme.TripMateTheme
+import com.example.tripmate.ui.viewmodels.TripActivityViewModel
+import com.example.tripmate.ui.viewmodels.TripViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -91,17 +95,60 @@ private fun formatMoney(value: Double): String = String.format(Locale.US, "\$%,.
 private fun formatTime(hour: Int, minute: Int): String = String.format(Locale.US, "%02d:%02d", hour, minute)
 
 /**
- * Trip itinerary screen: shows every activity of the selected trip grouped by day.
+ * Trip itinerary screen linked to the Room database.
  *
- * Navigation is NOT wired yet – everything is exposed through callbacks:
- *  - [onAddActivity]    → later: go to AddEditActivity in add mode
- *  - [onEditActivity]   → later: go to AddEditActivity in edit mode
- *  - [onDeleteActivity] → later: activityViewModel.deleteActivity(it)
- *  - [onViewBudget]     → later: go to BudgetStatScreen
+ * Data flow:  Room (TripDao / TripActivityDao) -> Repository -> ViewModel -> this screen.
+ *  - the trip header (name, info, image) comes from [TripViewModel.selectedTrip]
+ *  - the activity list comes from [TripActivityViewModel.selectedTripActivities]
+ *  - deleting an activity calls [TripActivityViewModel.deleteActivity]
+ *
+ * The two ViewModels are created ONCE in MainActivity (with their repositories and factories)
+ * and passed in here, so this screen never builds a repository or database itself.
+ *
+ * Navigation is handled by the NavHost in MainActivity through these callbacks:
+ *  - [onNavigateBack] -> back arrow
+ *  - [onAddActivity]  -> "Add Activity" button
+ *  - [onEditActivity] -> edit icon / tapping a card (not wired yet)
+ *  - [onViewBudget]   -> "View Budget & Stats" button
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityDetailScreen(
+    tripId: String,
+    tripViewModel: TripViewModel,
+    activityViewModel: TripActivityViewModel,
+    modifier: Modifier = Modifier,
+    onNavigateBack: () -> Unit = {},
+    onAddActivity: () -> Unit = {},
+    onEditActivity: (TripActivityEntity) -> Unit = {},
+    onViewBudget: () -> Unit = {},
+) {
+    // Tell both ViewModels which trip to load from the database
+    LaunchedEffect(tripId) {
+        tripViewModel.setSelectedTripId(tripId)
+        activityViewModel.setSelectedTripId(tripId)
+    }
+
+    val trip by tripViewModel.selectedTrip.collectAsState()
+    val activities by activityViewModel.selectedTripActivities.collectAsState()
+
+    ActivityDetailContent(
+        modifier = modifier,
+        tripName = trip?.title ?: "Loading...",
+        tripInfo = trip?.let { "${it.days} Days • ${it.toPlace}" } ?: "",
+        tripImageUrl = trip?.imageUrl ?: "",
+        activities = activities,
+        onNavigateBack = onNavigateBack,
+        onAddActivity = onAddActivity,
+        onEditActivity = onEditActivity,
+        onDeleteActivity = { activityViewModel.deleteActivity(it) },
+        onViewBudget = onViewBudget,
+    )
+}
+
+/** Stateless UI for the itinerary. Only displays what it is given, so it is easy to preview. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ActivityDetailContent(
     modifier: Modifier = Modifier,
     tripName: String = "Paris Summer Vacation",
     tripInfo: String = "7 Days • France",
@@ -576,7 +623,7 @@ fun ActivityDetailScreenPreview() {
     val now = System.currentTimeMillis()
     val day = 24 * 60 * 60 * 1000L
     TripMateTheme {
-        ActivityDetailScreen(
+        ActivityDetailContent(
             tripName = "Paris Summer Vacation",
             tripInfo = "7 Days • France",
             activities = listOf(
