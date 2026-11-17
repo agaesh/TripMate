@@ -48,10 +48,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.tripmate.data.model.TripActivityEntity
+import com.example.tripmate.ui.components.ConfirmMessageBox
 import com.example.tripmate.ui.components.CustomTextField
 import com.example.tripmate.ui.components.DateTimePickerRow
+import com.example.tripmate.ui.components.InfoMessageBox
 import com.example.tripmate.ui.components.TripHeaderCoverCard
 import com.example.tripmate.ui.theme.TripMateTheme
+import com.example.tripmate.util.ValidationUtils
 
 enum class ActivityCategory(val label: String, val emoji: String) {
     TRANSPORT("Transport", "✈️"),
@@ -76,6 +80,7 @@ fun AddActivityScreen(
     initialMinute: Int = 0,
     initialLocation: String = "",
     initialDescription: String = "",
+    existingActivities: List<TripActivityEntity> = emptyList(),
     onNavigateBack: () -> Unit = {},
     onSaveActivity: (
         title: String,
@@ -89,6 +94,9 @@ fun AddActivityScreen(
     ) -> Unit = { _, _, _, _, _, _, _, _ -> }
 ) {
     val isEditMode = activityId != null
+
+    var showSuccessAlert by remember { mutableStateOf(false) }
+    var showOverlapErrorAlert by remember { mutableStateOf(false) }
 
     var title by remember { mutableStateOf(initialTitle) }
     var selectedCategory by remember { mutableStateOf(initialCategory) }
@@ -258,7 +266,7 @@ fun AddActivityScreen(
                         location,
                         description
                     )
-                    onNavigateBack()
+                    showSuccessAlert = true
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -298,6 +306,39 @@ fun AddActivityScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (showSuccessAlert) {
+            ConfirmMessageBox(
+                title = if (isEditMode) "Successfully Updated!" else "Successfully Saved!",
+                message = if (isEditMode) {
+                    "Activity details have been updated."
+                } else {
+                    "Activity saved! You can add another activity or return home."
+                },
+                confirmButtonText = if (isEditMode) "OK" else "Add Another",
+                confirmButtonColor = Color(0xFF1976D2),
+                dismissButtonText = if (!isEditMode) "Back to Home" else null,
+                onConfirm = {
+                    showSuccessAlert = false
+                    if (isEditMode) {
+                        onNavigateBack()
+                    } else {
+                        title = ""
+                        costText = ""
+                        location = ""
+                        description = ""
+                        selectedCategory = ActivityCategory.SIGHTSEEING
+                    }
+                },
+                onDismiss = {
+                    showSuccessAlert = false
+                    onNavigateBack()
+                },
+                onDismissRequest = {
+                    showSuccessAlert = false
+                },
+            )
         }
     }
 }
