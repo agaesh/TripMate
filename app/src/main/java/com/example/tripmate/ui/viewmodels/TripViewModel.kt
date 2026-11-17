@@ -139,6 +139,8 @@ class TripViewModel(
         _selectedTripId.value = tripId
     }
 
+    fun getTripById(tripId: String): Flow<Trip?> = repository.getTripById(tripId)
+
     fun saveTrip(trip: Trip) {
         viewModelScope.launch {
             repository.saveTrip(trip)
