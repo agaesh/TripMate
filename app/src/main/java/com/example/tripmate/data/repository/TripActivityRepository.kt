@@ -2,6 +2,7 @@ package com.example.tripmate.data.repository
 
 import com.example.tripmate.data.local.TripActivityDao
 import com.example.tripmate.data.model.TripActivityEntity
+import com.example.tripmate.data.model.TripCostSummary
 import kotlinx.coroutines.flow.Flow
 
 class TripActivityRepository(private val tripActivityDao: TripActivityDao) {
@@ -28,5 +29,9 @@ class TripActivityRepository(private val tripActivityDao: TripActivityDao) {
 
     suspend fun deleteActivityById(activityId: String) {
         tripActivityDao.deleteActivityById(activityId)
+    }
+
+    fun getTripCostSummaries(): Flow<List<TripCostSummary>> {
+        return tripActivityDao.getTripCostSummaries()
     }
 }
