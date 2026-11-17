@@ -4,19 +4,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.tripmate.data.model.Trip
+import com.example.tripmate.data.repository.TripActivityRepository
 import com.example.tripmate.data.repository.TripRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class TripViewModel(private val repository: TripRepository) : ViewModel() {
+class TripViewModel(
+    private val repository: TripRepository,
+    private val activityRepo: TripActivityRepository,
+) : ViewModel() {
 
     val rawTrips: StateFlow<List<Trip>> = repository.allTrips.stateIn(
         scope = viewModelScope,
@@ -86,6 +92,17 @@ class TripViewModel(private val repository: TripRepository) : ViewModel() {
         initialValue = true,
     )
 
+    // Summed budget per tripId
+    val tripBudgets: StateFlow<Map<String, Double>> = activityRepo.getTripCostSummaries()
+        .map { summaries ->
+            summaries.associate { it.tripId to it.totalCost }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyMap(),
+        )
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
         _pageLimit.value = 5
@@ -122,6 +139,8 @@ class TripViewModel(private val repository: TripRepository) : ViewModel() {
         _selectedTripId.value = tripId
     }
 
+    fun getTripById(tripId: String): Flow<Trip?> = repository.getTripById(tripId)
+
     fun saveTrip(trip: Trip) {
         viewModelScope.launch {
             repository.saveTrip(trip)
@@ -135,11 +154,14 @@ class TripViewModel(private val repository: TripRepository) : ViewModel() {
     }
 }
 
-class TripViewModelFactory(private val repository: TripRepository) : ViewModelProvider.Factory {
+class TripViewModelFactory(
+    private val repository: TripRepository,
+    private val activityRepository: TripActivityRepository,
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(TripViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return TripViewModel(repository) as T
+            return TripViewModel(repository, activityRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

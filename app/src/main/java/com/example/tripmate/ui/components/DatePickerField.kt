@@ -1,12 +1,13 @@
 package com.example.tripmate.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -27,25 +28,38 @@ fun DatePickerField(
     onDateSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
     label: String = "Date",
-    dateFormat: String = "EEE, MMM dd, yyyy"
+    dateFormat: String = "EEE, MMM dd, yyyy",
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMillis)
 
     val dateFormatObj = remember(dateFormat) { SimpleDateFormat(dateFormat, Locale.getDefault()) }
     val formattedDate = dateFormatObj.format(Date(selectedDateMillis))
 
-    Surface(
-        modifier = modifier.clickable { showDialog = true }
+    Box(
+        modifier = modifier,
     ) {
-        //adding custom date textbox
-        CustomTextField(value = formattedDate, onValueChange = {},
-            label = label, leadingIcon = Icons.Outlined.DateRange,
-            singleLine = true, readOnly = true, enabled = true
+        CustomTextField(
+            value = formattedDate,
+            onValueChange = {},
+            label = label,
+            leadingIcon = Icons.Outlined.DateRange,
+            singleLine = true,
+            readOnly = true,
+            enabled = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        // Transparent overlay to catch all click taps reliably
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable { showDialog = true },
         )
     }
 
     if (showDialog) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMillis)
+
         DatePickerDialog(
             onDismissRequest = { showDialog = false },
             confirmButton = {
@@ -53,7 +67,7 @@ fun DatePickerField(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { onDateSelected(it) }
                         showDialog = false
-                    }
+                    },
                 ) {
                     Text("OK")
                 }
@@ -62,7 +76,7 @@ fun DatePickerField(
                 TextButton(onClick = { showDialog = false }) {
                     Text("Cancel")
                 }
-            }
+            },
         ) {
             DatePicker(state = datePickerState)
         }

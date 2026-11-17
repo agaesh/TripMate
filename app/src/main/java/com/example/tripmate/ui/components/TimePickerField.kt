@@ -2,6 +2,7 @@ package com.example.tripmate.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,14 +37,9 @@ fun TimePickerField(
     onTimeSelected: (hour: Int, minute: Int) -> Unit,
     modifier: Modifier = Modifier,
     label: String = "Time",
-    is24Hour: Boolean = false
+    is24Hour: Boolean = false,
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    val timePickerState = rememberTimePickerState(
-        initialHour = selectedHour,
-        initialMinute = selectedMinute,
-        is24Hour = is24Hour
-    )
 
     val formattedTime = remember(selectedHour, selectedMinute, is24Hour) {
         if (is24Hour) {
@@ -58,8 +54,8 @@ fun TimePickerField(
         }
     }
 
-    Surface(
-        modifier = modifier.clickable { showDialog = true }
+    Box(
+        modifier = modifier,
     ) {
         CustomTextField(
             value = formattedTime,
@@ -68,25 +64,39 @@ fun TimePickerField(
             leadingIcon = Icons.Outlined.Info,
             singleLine = true,
             readOnly = true,
-            enabled = true
+            enabled = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        // Transparent overlay to catch all click taps reliably
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable { showDialog = true },
         )
     }
 
     if (showDialog) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = selectedHour,
+            initialMinute = selectedMinute,
+            is24Hour = is24Hour,
+        )
+
         Dialog(onDismissRequest = { showDialog = false }) {
             Surface(
                 shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 6.dp
+                tonalElevation = 6.dp,
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     TimePicker(state = timePickerState)
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
+                        horizontalArrangement = Arrangement.End,
                     ) {
                         TextButton(onClick = { showDialog = false }) {
                             Text("Cancel")
