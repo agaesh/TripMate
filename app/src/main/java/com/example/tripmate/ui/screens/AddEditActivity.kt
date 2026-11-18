@@ -81,6 +81,7 @@ fun AddActivityScreen(
     initialLocation: String = "",
     initialDescription: String = "",
     existingActivities: List<TripActivityEntity> = emptyList(),
+    showSuccessDialog: Boolean = true, // false = the caller shows the success dialog itself after redirecting
     onNavigateBack: () -> Unit = {},
     onSaveActivity: (
         title: String,
@@ -266,7 +267,7 @@ fun AddActivityScreen(
                         location,
                         description
                     )
-                    showSuccessAlert = true
+                    showSuccessAlert = showSuccessDialog
                 },
                 modifier = Modifier
                     .fillMaxWidth()
