@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -44,12 +45,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.tripmate.data.model.TripActivityEntity
+import com.example.tripmate.ui.components.ConfirmMessageBox
 import com.example.tripmate.ui.components.CustomTextField
 import com.example.tripmate.ui.components.DateTimePickerRow
+import com.example.tripmate.ui.components.InfoMessageBox
 import com.example.tripmate.ui.components.TripHeaderCoverCard
 import com.example.tripmate.ui.theme.TripMateTheme
+import com.example.tripmate.util.ValidationUtils
 
 enum class ActivityCategory(val label: String, val emoji: String) {
     TRANSPORT("Transport", "✈️"),
@@ -68,27 +74,35 @@ fun AddActivityScreen(
     activityId: String? = null, // null = Add Mode, non-null = Edit Mode
     initialTitle: String = "",
     initialCategory: ActivityCategory = ActivityCategory.SIGHTSEEING,
+    initialCost: Double = 0.0,
     initialDateMillis: Long? = null,
     initialHour: Int = 10,
     initialMinute: Int = 0,
     initialLocation: String = "",
     initialDescription: String = "",
+    existingActivities: List<TripActivityEntity> = emptyList(),
+    showSuccessDialog: Boolean = true, // false = the caller shows the success dialog itself after redirecting
     onNavigateBack: () -> Unit = {},
     onSaveActivity: (
         title: String,
         category: ActivityCategory,
+        cost: Double,
         dateMillis: Long,
         hour: Int,
         minute: Int,
         location: String,
         description: String
-    ) -> Unit = { _, _, _, _, _, _, _ -> }
+    ) -> Unit = { _, _, _, _, _, _, _, _ -> }
 ) {
     val isEditMode = activityId != null
+
+    var showSuccessAlert by remember { mutableStateOf(false) }
+    var showOverlapErrorAlert by remember { mutableStateOf(false) }
 
     var title by remember { mutableStateOf(initialTitle) }
     var selectedCategory by remember { mutableStateOf(initialCategory) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
+    var costText by remember { mutableStateOf(if (initialCost > 0) initialCost.toString() else "") }
 
     // Date & Time Selection State
     var selectedDateMillis by remember { mutableStateOf(initialDateMillis ?: System.currentTimeMillis()) }
@@ -188,6 +202,20 @@ fun AddActivityScreen(
                 }
             }
 
+            // Cost Allocation Field
+            CustomTextField(
+                value = costText,
+                onValueChange = { input ->
+                    costText = input.filter { char -> char.isDigit() || char == '.' }
+                },
+                label = "Cost Allocation ($)",
+                placeholder = "e.g., 150.00",
+                leadingIcon = Icons.Outlined.Info,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth()
+            )
+
             // Reusable Date & Time Picker Component
             DateTimePickerRow(
                 selectedDateMillis = selectedDateMillis,
@@ -228,16 +256,18 @@ fun AddActivityScreen(
             // Save / Update Button
             Button(
                 onClick = {
+                    val parsedCost = costText.toDoubleOrNull() ?: 0.0
                     onSaveActivity(
                         title,
                         selectedCategory,
+                        parsedCost,
                         selectedDateMillis,
                         selectedHour,
                         selectedMinute,
                         location,
                         description
                     )
-                    onNavigateBack()
+                    showSuccessAlert = showSuccessDialog
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -277,6 +307,39 @@ fun AddActivityScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        if (showSuccessAlert) {
+            ConfirmMessageBox(
+                title = if (isEditMode) "Successfully Updated!" else "Successfully Saved!",
+                message = if (isEditMode) {
+                    "Activity details have been updated."
+                } else {
+                    "Activity saved! You can add another activity or return home."
+                },
+                confirmButtonText = if (isEditMode) "OK" else "Add Another",
+                confirmButtonColor = Color(0xFF1976D2),
+                dismissButtonText = if (!isEditMode) "Back to Home" else null,
+                onConfirm = {
+                    showSuccessAlert = false
+                    if (isEditMode) {
+                        onNavigateBack()
+                    } else {
+                        title = ""
+                        costText = ""
+                        location = ""
+                        description = ""
+                        selectedCategory = ActivityCategory.SIGHTSEEING
+                    }
+                },
+                onDismiss = {
+                    showSuccessAlert = false
+                    onNavigateBack()
+                },
+                onDismissRequest = {
+                    showSuccessAlert = false
+                },
+            )
         }
     }
 }
