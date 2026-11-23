@@ -1,3 +1,22 @@
-/app/build/intermediates/incremental/debug-mergeJavaRes/zip-cache/+IkewoTjqgnjKS5VkyNV7Ol9IXU=
-/app/build/intermediates/incremental/debug-mergeJavaRes/zip-cache/0FmoX+byoU0im6RB+kchaNgPWAo=
-/app/build/intermediates/incremental/debug-mergeJavaRes/zip-cache/3N3FP+FlPttpoJ2T3ZKm3VDDLZE=
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# JVM target
+.gradle
+/build/
+/app/build/
+
+# Local configuration file (sdk.dir, etc.)
+/local.properties
+.gradle/9.6.0/fileHashes
+# IntelliJ project files
+.idea/
+.DS_Store
+*.iml
+.navigation/
+
+# Keystore files
+*.jks
+*.keystore
