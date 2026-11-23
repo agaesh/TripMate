@@ -27,7 +27,8 @@ import com.example.tripmate.ui.screens.ActivityDetailScreen
 import com.example.tripmate.ui.screens.AddActivityScreen
 import com.example.tripmate.ui.screens.AddEditTripScreen
 import com.example.tripmate.ui.screens.BudgetStatScreen
-import com.example.tripmate.ui.screens.HomeScreen
+import com.example.tripmate.ui.screens.DashboardScreen
+import com.example.tripmate.ui.screens.TripManager
 import com.example.tripmate.ui.theme.TripMateTheme
 import com.example.tripmate.ui.viewmodels.TripActivityViewModel
 import com.example.tripmate.ui.viewmodels.TripActivityViewModelFactory
@@ -62,10 +63,22 @@ class MainActivity : ComponentActivity() {
             TripMateTheme {
                 NavHost(
                     navController = navController,
-                    startDestination = "home",
+                    startDestination = "dashboard",
                 ) {
-                    composable("home") {
-                        HomeScreen(
+                    composable("dashboard") {
+                        DashboardScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            onNavigateToTripManager = {
+                                navController.navigate("trip_manager")
+                            },
+                            onAddTripClick = {
+                                navController.navigate("add_edit_trip")
+                            },
+                        )
+                    }
+
+                    composable("trip_manager") {
+                        TripManager(
                             modifier = Modifier.fillMaxSize(),
                             trips = trips,
                             budgetsByTripId = budgetsByTripId,
@@ -89,6 +102,11 @@ class MainActivity : ComponentActivity() {
                                 val encodedName = Uri.encode(selectedTrip.title)
                                 val encodedInfo = Uri.encode("${selectedTrip.days} Days • ${selectedTrip.toPlace}")
                                 navController.navigate("add_edit_activity?tripId=${selectedTrip.id}&tripName=$encodedName&tripInfo=$encodedInfo")
+                            },
+                            onNavigateToDashboard = {
+                                navController.navigate("dashboard") {
+                                    popUpTo("dashboard") { inclusive = true }
+                                }
                             },
                         )
                     }
