@@ -44,10 +44,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.tripmate.data.model.Trip
+import com.example.tripmate.ui.components.ConfirmMessageBox
 import com.example.tripmate.ui.components.CustomTextField
 import com.example.tripmate.ui.components.DatePickerField
+import com.example.tripmate.ui.components.InfoMessageBox
 import com.example.tripmate.ui.components.TripHeaderCoverCard
 import com.example.tripmate.ui.theme.TripMateTheme
+import com.example.tripmate.util.ValidationUtils
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +58,8 @@ import java.util.UUID
 fun AddEditTripScreen(
     initialTrip: Trip? = null,
     onNavigateBack: () -> Unit = {},
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToItinerary: (tripId: String) -> Unit = {},
     onSaveTrip: (Trip) -> Unit = {},
 ) {
     val isEditMode = initialTrip != null
@@ -72,6 +77,10 @@ fun AddEditTripScreen(
             initialTrip?.endDateMillis ?: (System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000L)),
         )
     }
+
+    var validationErrorMessage by remember { mutableStateOf<String?>(null) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    var savedTrip by remember { mutableStateOf<Trip?>(null) }
 
     // Auto-calculate days & duration string
     val diffMillis = maxOf(0L, endDateMillis - startDateMillis)
@@ -188,11 +197,25 @@ fun AddEditTripScreen(
             // Save / Update Button
             Button(
                 onClick = {
+                    val trimmedTitle = title.trim()
+                    val trimmedFrom = fromPlace.trim()
+                    val trimmedTo = toPlace.trim()
+
+                    if (trimmedTitle.isBlank() || trimmedFrom.isBlank() || trimmedTo.isBlank()) {
+                        validationErrorMessage = "Please fill in all required fields: Trip Title, Origin, and Destination."
+                        return@Button
+                    }
+
+                    if (!ValidationUtils.isValidTripDates(startDateMillis, endDateMillis)) {
+                        validationErrorMessage = "Invalid Trip Dates: End Date cannot be earlier than Start Date."
+                        return@Button
+                    }
+
                     val tripObj = Trip(
                         id = initialTrip?.id ?: UUID.randomUUID().toString(),
-                        title = title.trim(),
-                        fromPlace = fromPlace.trim(),
-                        toPlace = toPlace.trim(),
+                        title = trimmedTitle,
+                        fromPlace = trimmedFrom,
+                        toPlace = trimmedTo,
                         days = calculatedDays,
                         duration = durationText,
                         imageUrl = imageUrl.trim(),
@@ -200,12 +223,12 @@ fun AddEditTripScreen(
                         endDateMillis = endDateMillis,
                     )
                     onSaveTrip(tripObj)
-                    onNavigateBack()
+                    savedTrip = tripObj
+                    showSuccessDialog = true
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
-                enabled = title.isNotBlank() && fromPlace.isNotBlank() && toPlace.isNotBlank(),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF7B1FA2),
@@ -241,13 +264,43 @@ fun AddEditTripScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-    }
-}
 
-@Preview(showBackground = true)
-@Composable
-fun AddEditTripScreenPreview() {
-    TripMateTheme {
-        AddEditTripScreen()
+        // Custom Validation Error Modal using InfoMessageBox
+        validationErrorMessage?.let { message ->
+            InfoMessageBox(
+                title = "Cannot Proceed",
+                message = message,
+                buttonText = "OK",
+                buttonColor = Color(0xFFD32F2F),
+                onDismiss = { validationErrorMessage = null },
+            )
+        }
+
+        // Post-Save Choice ConfirmMessageBox
+        if (showSuccessDialog) {
+            ConfirmMessageBox(
+                title = if (isEditMode) "Trip Successfully Updated!" else "Trip Successfully Saved!",
+                message = if (isEditMode) {
+                    "Your trip details have been updated."
+                } else {
+                    "Your new trip '${savedTrip?.title}' has been created!"
+                },
+                confirmButtonText = "View Trip Itinerary",
+                confirmButtonColor = Color(0xFF7B1FA2),
+                dismissButtonText = "Go to Trip List",
+                onConfirm = {
+                    showSuccessDialog = false
+                    savedTrip?.let { onNavigateToItinerary(it.id) } ?: onNavigateToHome()
+                },
+                onDismiss = {
+                    showSuccessDialog = false
+                    onNavigateToHome()
+                },
+                onDismissRequest = {
+                    showSuccessDialog = false
+                    onNavigateToHome()
+                },
+            )
+        }
     }
 }
