@@ -71,7 +71,7 @@ fun AddActivityScreen(
     tripId: String = "",
     tripName: String = "Paris Summer Trip 2026",
     tripInfo: String = "7 Days • France",
-    activityId: String? = null, // null = Add Mode, non-null = Edit Mode
+    activityId: String? = null,
     initialTitle: String = "",
     initialCategory: ActivityCategory = ActivityCategory.SIGHTSEEING,
     initialCost: Double = 0.0,
@@ -81,7 +81,7 @@ fun AddActivityScreen(
     initialLocation: String = "",
     initialDescription: String = "",
     existingActivities: List<TripActivityEntity> = emptyList(),
-    showSuccessDialog: Boolean = true, // false = the caller shows the success dialog itself after redirecting
+    showSuccessDialog: Boolean = true,
     onNavigateBack: () -> Unit = {},
     onSaveActivity: (
         title: String,
@@ -97,14 +97,13 @@ fun AddActivityScreen(
     val isEditMode = activityId != null
 
     var showSuccessAlert by remember { mutableStateOf(false) }
-    var showOverlapErrorAlert by remember { mutableStateOf(false) }
+    var validationErrorMessage by remember { mutableStateOf<String?>(null) }
 
     var title by remember { mutableStateOf(initialTitle) }
     var selectedCategory by remember { mutableStateOf(initialCategory) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
     var costText by remember { mutableStateOf(if (initialCost > 0) initialCost.toString() else "") }
 
-    // Date & Time Selection State
     var selectedDateMillis by remember { mutableStateOf(initialDateMillis ?: System.currentTimeMillis()) }
     var selectedHour by remember { mutableStateOf(initialHour) }
     var selectedMinute by remember { mutableStateOf(initialMinute) }
@@ -147,14 +146,12 @@ fun AddActivityScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Trip Header Cover Card
             TripHeaderCoverCard(
                 tripName = tripName,
                 tripInfo = tripInfo,
                 isEditMode = isEditMode
             )
 
-            // Activity Title
             CustomTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -165,7 +162,6 @@ fun AddActivityScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Category Selection (Dropdown Combobox)
             ExposedDropdownMenuBox(
                 expanded = categoryDropdownExpanded,
                 onExpandedChange = { categoryDropdownExpanded = !categoryDropdownExpanded },
@@ -202,7 +198,6 @@ fun AddActivityScreen(
                 }
             }
 
-            // Cost Allocation Field
             CustomTextField(
                 value = costText,
                 onValueChange = { input ->
@@ -216,7 +211,6 @@ fun AddActivityScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Reusable Date & Time Picker Component
             DateTimePickerRow(
                 selectedDateMillis = selectedDateMillis,
                 onDateSelected = { selectedDateMillis = it },
@@ -228,7 +222,6 @@ fun AddActivityScreen(
                 }
             )
 
-            // Location Input
             CustomTextField(
                 value = location,
                 onValueChange = { location = it },
@@ -239,7 +232,6 @@ fun AddActivityScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Description / Notes Input
             CustomTextField(
                 value = description,
                 onValueChange = { description = it },
@@ -253,26 +245,43 @@ fun AddActivityScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Save / Update Button
             Button(
                 onClick = {
+                    val trimmedTitle = title.trim()
+                    if (trimmedTitle.isBlank()) {
+                        validationErrorMessage = "Activity Title is required and cannot be blank."
+                        return@Button
+                    }
+
+                    val hasOverlap = ValidationUtils.hasActivityTimeOverlap(
+                        existingActivities = existingActivities,
+                        currentActivityId = activityId,
+                        dateMillis = selectedDateMillis,
+                        hour = selectedHour,
+                        minute = selectedMinute
+                    )
+
+                    if (hasOverlap) {
+                        validationErrorMessage = "Schedule Conflict: An activity is already scheduled for this exact date and time. Please adjust the time."
+                        return@Button
+                    }
+
                     val parsedCost = costText.toDoubleOrNull() ?: 0.0
                     onSaveActivity(
-                        title,
+                        trimmedTitle,
                         selectedCategory,
                         parsedCost,
                         selectedDateMillis,
                         selectedHour,
                         selectedMinute,
-                        location,
-                        description
+                        location.trim(),
+                        description.trim()
                     )
                     showSuccessAlert = showSuccessDialog
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp),
-                enabled = title.isNotBlank(),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF1976D2),
@@ -309,17 +318,28 @@ fun AddActivityScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        // Custom Validation / Overlap Error Modal using InfoMessageBox
+        validationErrorMessage?.let { message ->
+            InfoMessageBox(
+                title = "Cannot Save Activity",
+                message = message,
+                buttonText = "OK",
+                buttonColor = Color(0xFFD32F2F),
+                onDismiss = { validationErrorMessage = null },
+            )
+        }
+
         if (showSuccessAlert) {
             ConfirmMessageBox(
                 title = if (isEditMode) "Successfully Updated!" else "Successfully Saved!",
                 message = if (isEditMode) {
                     "Activity details have been updated."
                 } else {
-                    "Activity saved! You can add another activity or return home."
+                    "Activity saved! You can add another activity or return to itinerary."
                 },
-                confirmButtonText = if (isEditMode) "OK" else "Add Another",
+                confirmButtonText = if (isEditMode) "Back to Itinerary" else "Add Another",
                 confirmButtonColor = Color(0xFF1976D2),
-                dismissButtonText = if (!isEditMode) "Back to Home" else null,
+                dismissButtonText = if (!isEditMode) "Back to Itinerary" else null,
                 onConfirm = {
                     showSuccessAlert = false
                     if (isEditMode) {
@@ -341,18 +361,5 @@ fun AddActivityScreen(
                 },
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AddActivityScreenPreview() {
-    TripMateTheme {
-        AddActivityScreen(
-            tripId = "sample_trip",
-            tripName = "Paris Summer Vacation",
-            tripInfo = "7 Days • France",
-            activityId = null
-        )
     }
 }
