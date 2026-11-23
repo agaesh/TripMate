@@ -19,11 +19,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
@@ -33,14 +30,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -64,17 +57,18 @@ import com.example.tripmate.data.model.Trip
 import com.example.tripmate.ui.components.ConfirmMessageBox
 import com.example.tripmate.ui.components.FeatureMediaCard
 import com.example.tripmate.ui.components.ScrollableFilterLayout
+import com.example.tripmate.ui.components.TripMateNavigationDrawer
 import com.example.tripmate.ui.theme.TripMateTheme
 import kotlinx.coroutines.launch
 
-val filterCategories = listOf("All", "Europe", "Asia", "Americas", "Oceania", "Short Getaways")
+val tripFilterCategories = listOf("All", "Europe", "Asia", "Americas", "Oceania", "Short Getaways")
 
 private val AccentPurple = Color(0xFF7B1FA2)
 private val AccentPurpleDark = Color(0xFF6A1B9A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
+fun TripManager(
     modifier: Modifier = Modifier,
     trips: List<Trip> = emptyList(),
     budgetsByTripId: Map<String, Double> = emptyMap(),
@@ -90,6 +84,7 @@ fun HomeScreen(
     onDeleteTrip: (Trip) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onAddTripClick: () -> Unit = {},
+    onNavigateToDashboard: () -> Unit = {},
 ) {
     var tripToDelete by remember { mutableStateOf<Trip?>(null) }
     val listState = rememberLazyListState()
@@ -97,55 +92,19 @@ fun HomeScreen(
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    var selectedDrawerItem by remember { mutableStateOf("Trip Manager") }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 28.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "TripMate Menu",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentPurple,
-                    )
-                    IconButton(onClick = { scope.launch { drawerState.close() } }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close navigation drawer",
-                            tint = Color.Gray,
-                        )
-                    }
-                }
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                NavigationDrawerItem(
-                    label = { Text("Dashboard") },
-                    icon = { Icon(Icons.Outlined.Home, contentDescription = null) },
-                    selected = selectedDrawerItem == "Dashboard",
-                    onClick = {
-                        selectedDrawerItem = "Dashboard"
-                        scope.launch { drawerState.close() }
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                )
-                NavigationDrawerItem(
-                    label = { Text("Trip Manager") },
-                    icon = { Icon(Icons.AutoMirrored.Outlined.List, contentDescription = null) },
-                    selected = selectedDrawerItem == "Trip Manager",
-                    onClick = {
-                        selectedDrawerItem = "Trip Manager"
-                        scope.launch { drawerState.close() }
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                )
-            }
+            TripMateNavigationDrawer(
+                selectedRoute = "trip_manager",
+                onNavigateToDashboard = {
+                    scope.launch { drawerState.close() }
+                    onNavigateToDashboard()
+                },
+                onNavigateToTripManager = { scope.launch { drawerState.close() } },
+                onCloseDrawer = { scope.launch { drawerState.close() } },
+            )
         },
     ) {
         Scaffold(
@@ -238,7 +197,7 @@ fun HomeScreen(
                     )
 
                     ScrollableFilterLayout(
-                        filterCategories = filterCategories,
+                        filterCategories = tripFilterCategories,
                         selectedFilter = selectedFilter,
                         onFilterSelected = { selected ->
                             selectedCategory = selected
@@ -246,7 +205,7 @@ fun HomeScreen(
                         },
                     ) {
                         Text(
-                            text = "Kategori Terpilih: $selectedCategory",
+                            text = "Category: $selectedCategory",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -406,13 +365,13 @@ fun HomeScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun HomeScreenPreview() {
+fun TripManagerPreview() {
     TripMateTheme {
-        HomeScreen(
+        TripManager(
             trips = listOf(
                 Trip(
                     id = "paris_2026",
-                    title = "Paris Su Vacation",
+                    title = "Paris Summer Vacation",
                     fromPlace = "London, UK",
                     toPlace = "Paris, France",
                     days = 7,
