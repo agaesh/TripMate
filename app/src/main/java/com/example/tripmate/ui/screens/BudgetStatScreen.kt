@@ -38,6 +38,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +52,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tripmate.data.model.TripActivityEntity
 import com.example.tripmate.ui.theme.TripMateTheme
+import com.example.tripmate.ui.viewmodels.TripActivityViewModel
+import com.example.tripmate.ui.viewmodels.TripViewModel
+import java.util.Calendar
 import java.util.Locale
 
 // ── Theme tokens (same values used by HomeScreen / FeatureMediaCard) ──
@@ -96,15 +103,77 @@ private val mockBudgetExpenses = listOf(
     BudgetExpense("Eurostar Return", ActivityCategory.TRANSPORT, 180.00, 7),
 )
 
+private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1000L
+
+private fun startOfDay(millis: Long): Long = Calendar.getInstance().apply {
+    timeInMillis = millis
+    set(Calendar.HOUR_OF_DAY, 0)
+    set(Calendar.MINUTE, 0)
+    set(Calendar.SECOND, 0)
+    set(Calendar.MILLISECOND, 0)
+}.timeInMillis
+
 /**
- * Budget & Statistics screen.
- *
- * Navigation is NOT wired yet – only [onNavigateBack] is exposed.
- * All numbers are derived from [expenses], which defaults to simple mock data.
+ * Turns the trip's saved activities (Room) into expenses for this screen.
+ * Only activities with a cost are counted. "Day N" is counted from the earliest activity,
+ * the same way ActivityDetailScreen numbers its days.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+private fun List<TripActivityEntity>.toBudgetExpenses(): List<BudgetExpense> {
+    if (isEmpty()) return emptyList()
+    val firstDay = startOfDay(minOf { it.dateMillis })
+    return filter { it.cost > 0 }
+        .sortedWith(compareBy({ it.dateMillis }, { it.hour }, { it.minute }))
+        .map { activity ->
+            val dayIndex = Math.round((startOfDay(activity.dateMillis) - firstDay).toDouble() / MILLIS_PER_DAY).toInt() + 1
+            BudgetExpense(
+                title = activity.title,
+                category = runCatching { ActivityCategory.valueOf(activity.category) }
+                    .getOrDefault(ActivityCategory.OTHER),
+                amount = activity.cost,
+                day = dayIndex
+            )
+        }
+}
+
+/**
+ * Budget & Statistics screen linked to the Room database.
+ *
+ * Data flow:  Room -> Repository -> ViewModel -> this screen.
+ *  - trip name / info / number of days come from [TripViewModel.selectedTrip]
+ *  - expenses come from [TripActivityViewModel.selectedTripActivities] (each activity's cost)
+ *
+ * Both ViewModels are created once in MainActivity and passed in.
+ * Note: the database has no "budget" column yet, so the budget limit is the [totalBudget] parameter.
+ */
 @Composable
 fun BudgetStatScreen(
+    tripViewModel: TripViewModel,
+    activityViewModel: TripActivityViewModel,
+    modifier: Modifier = Modifier,
+    totalBudget: Double = 1500.0,
+    onNavigateBack: () -> Unit = {},
+) {
+    val trip by tripViewModel.selectedTrip.collectAsState()
+    val activities by activityViewModel.selectedTripActivities.collectAsState()
+
+    val expenses = remember(activities) { activities.toBudgetExpenses() }
+    val totalDays = maxOf(trip?.days ?: 0, expenses.maxOfOrNull { it.day } ?: 0, 1)
+
+    BudgetStatContent(
+        modifier = modifier,
+        tripName = trip?.title ?: "Loading...",
+        tripInfo = trip?.let { "${it.days} Days • ${it.toPlace}" } ?: "",
+        totalBudget = totalBudget,
+        totalDays = totalDays,
+        expenses = expenses,
+        onNavigateBack = onNavigateBack,
+    )
+}
+
+/** Stateless UI. Only displays what it is given, so it is easy to preview (defaults = mock data). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BudgetStatContent(
     modifier: Modifier = Modifier,
     tripName: String = "Paris Summer Vacation",
     tripInfo: String = "7 Days • France",
@@ -300,6 +369,14 @@ fun BudgetStatScreen(
                     color = TextPrimary
                 )
 
+                if (byCategory.isEmpty()) {
+                    Text(
+                        text = "No expenses yet. Add activities with a cost to see them here.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+
                 byCategory.forEach { (category, amount) ->
                     val share = if (totalSpent > 0) (amount / totalSpent) else 0.0
                     val color = budgetCategoryColor(category)
@@ -414,6 +491,14 @@ fun BudgetStatScreen(
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
+
+                if (topExpenses.isEmpty()) {
+                    Text(
+                        text = "No expenses yet.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
 
                 topExpenses.forEachIndexed { index, expense ->
                     if (index > 0) HorizontalDivider(color = CardBorder)
@@ -574,6 +659,6 @@ private fun ProgressBar(
 @Composable
 fun BudgetStatScreenPreview() {
     TripMateTheme {
-        BudgetStatScreen()
+        BudgetStatContent()
     }
 }
