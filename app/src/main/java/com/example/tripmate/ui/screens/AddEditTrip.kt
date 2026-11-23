@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -64,18 +65,32 @@ fun AddEditTripScreen(
 ) {
     val isEditMode = initialTrip != null
 
-    var title by remember(initialTrip) { mutableStateOf(initialTrip?.title ?: "") }
-    var fromPlace by remember(initialTrip) { mutableStateOf(initialTrip?.fromPlace ?: "") }
-    var toPlace by remember(initialTrip) { mutableStateOf(initialTrip?.toPlace ?: "") }
-    var imageUrl by remember(initialTrip) { mutableStateOf(initialTrip?.imageUrl ?: "") }
+    var isInitialized by remember(initialTrip?.id) { mutableStateOf(false) }
 
-    var startDateMillis by remember(initialTrip) {
+    var title by remember(initialTrip?.id) { mutableStateOf(initialTrip?.title ?: "") }
+    var fromPlace by remember(initialTrip?.id) { mutableStateOf(initialTrip?.fromPlace ?: "") }
+    var toPlace by remember(initialTrip?.id) { mutableStateOf(initialTrip?.toPlace ?: "") }
+    var imageUrl by remember(initialTrip?.id) { mutableStateOf(initialTrip?.imageUrl ?: "") }
+
+    var startDateMillis by remember(initialTrip?.id) {
         mutableLongStateOf(initialTrip?.startDateMillis ?: System.currentTimeMillis())
     }
-    var endDateMillis by remember(initialTrip) {
+    var endDateMillis by remember(initialTrip?.id) {
         mutableLongStateOf(
             initialTrip?.endDateMillis ?: (System.currentTimeMillis() + (7 * 24 * 60 * 60 * 1000L)),
         )
+    }
+
+    LaunchedEffect(initialTrip) {
+        if (initialTrip != null && !isInitialized) {
+            title = initialTrip.title
+            fromPlace = initialTrip.fromPlace
+            toPlace = initialTrip.toPlace
+            imageUrl = initialTrip.imageUrl
+            startDateMillis = initialTrip.startDateMillis
+            endDateMillis = initialTrip.endDateMillis
+            isInitialized = true
+        }
     }
 
     var validationErrorMessage by remember { mutableStateOf<String?>(null) }
@@ -302,5 +317,13 @@ fun AddEditTripScreen(
                 },
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AddEditTripScreenPreview() {
+    TripMateTheme {
+        AddEditTripScreen()
     }
 }

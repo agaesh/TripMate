@@ -37,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,20 +97,36 @@ fun AddActivityScreen(
 ) {
     val isEditMode = activityId != null
 
+    var isInitialized by remember(activityId) { mutableStateOf(false) }
+
     var showSuccessAlert by remember { mutableStateOf(false) }
     var validationErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    var title by remember { mutableStateOf(initialTitle) }
-    var selectedCategory by remember { mutableStateOf(initialCategory) }
+    var title by remember(activityId) { mutableStateOf(initialTitle) }
+    var selectedCategory by remember(activityId) { mutableStateOf(initialCategory) }
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
-    var costText by remember { mutableStateOf(if (initialCost > 0) initialCost.toString() else "") }
+    var costText by remember(activityId) { mutableStateOf(if (initialCost > 0) initialCost.toString() else "") }
 
-    var selectedDateMillis by remember { mutableStateOf(initialDateMillis ?: System.currentTimeMillis()) }
-    var selectedHour by remember { mutableStateOf(initialHour) }
-    var selectedMinute by remember { mutableStateOf(initialMinute) }
+    var selectedDateMillis by remember(activityId) { mutableStateOf(initialDateMillis ?: System.currentTimeMillis()) }
+    var selectedHour by remember(activityId) { mutableStateOf(initialHour) }
+    var selectedMinute by remember(activityId) { mutableStateOf(initialMinute) }
 
-    var location by remember { mutableStateOf(initialLocation) }
-    var description by remember { mutableStateOf(initialDescription) }
+    var location by remember(activityId) { mutableStateOf(initialLocation) }
+    var description by remember(activityId) { mutableStateOf(initialDescription) }
+
+    LaunchedEffect(activityId) {
+        if (!isInitialized) {
+            title = initialTitle
+            selectedCategory = initialCategory
+            costText = if (initialCost > 0) initialCost.toString() else ""
+            selectedDateMillis = initialDateMillis ?: System.currentTimeMillis()
+            selectedHour = initialHour
+            selectedMinute = initialMinute
+            location = initialLocation
+            description = initialDescription
+            isInitialized = true
+        }
+    }
 
     val scrollState = rememberScrollState()
 
