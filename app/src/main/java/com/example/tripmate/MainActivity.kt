@@ -227,11 +227,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable(route = "budget_stat") {
-                        val selectedTrip by tripViewModel.selectedTrip.collectAsState()
-
                         BudgetStatScreen(
-                            tripName = selectedTrip?.title ?: "",
-                            tripInfo = selectedTrip?.let { "${it.days} Days • ${it.toPlace}" } ?: "",
+                            tripViewModel = tripViewModel,
+                            activityViewModel = activityViewModel,
                             onNavigateBack = {
                                 navController.popBackStack()
                             },
